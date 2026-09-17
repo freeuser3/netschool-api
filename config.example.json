@@ -1,0 +1,6 @@
+{
+  "ns_login": "your_login",
+  "ns_password": "your_password",
+  "ns_school": "School Name",
+  "api_token": "secret-token"
+}
