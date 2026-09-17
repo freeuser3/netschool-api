@@ -23,3 +23,19 @@ def test_get_api_token_falls_back_to_file(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("API_TOKEN", raising=False)
     assert cfg.get_api_token() == "file_token"
+
+
+def test_load_config_missing_file():
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        cfg.load_config("/nonexistent/config.json")
+
+
+def test_get_api_token_no_env_no_key(monkeypatch, tmp_path):
+    import pytest
+    p = tmp_path / "config.json"
+    p.write_text(json.dumps({"other_key": "val"}), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("API_TOKEN", raising=False)
+    with pytest.raises(KeyError):
+        cfg.get_api_token()

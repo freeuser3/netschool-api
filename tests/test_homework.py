@@ -143,6 +143,49 @@ def test_homework_no_school_day(monkeypatch):
     assert data["homework"] == []
 
 
+def test_homework_empty_schedule(monkeypatch):
+    from netschoolapi_plus.schemas import Diary
+
+    monkeypatch.setenv("API_TOKEN", "sekret")
+    diary = Diary(
+        start=datetime.date(2026, 9, 15),
+        end=datetime.date(2026, 9, 15),
+        schedule=[],
+    )
+    ns = _mock_ns(diary)
+    with patch("app.homework.load_config") as mock_cfg, \
+         patch("app.homework.NetSchoolAPI") as mock_ns_cls:
+        mock_cfg.return_value = _config()
+        mock_ns_cls.return_value = ns
+
+        r = client.get("/v1/homework?date=2026-09-15", headers=AUTH)
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["school_day"] is False
+    assert data["homework"] == []
+
+
+def test_homework_attachments_failure(monkeypatch):
+    monkeypatch.setenv("API_TOKEN", "sekret")
+    diary = _make_diary(
+        [_make_lesson(3, "Английский язык",
+                      [_make_assignment(12, "Домашнее задание", "SB стр. 138")])]
+    )
+    ns = _mock_ns(diary)
+    ns.attachments = AsyncMock(side_effect=RuntimeError("net error"))
+    with patch("app.homework.load_config") as mock_cfg, \
+         patch("app.homework.NetSchoolAPI") as mock_ns_cls:
+        mock_cfg.return_value = _config()
+        mock_ns_cls.return_value = ns
+
+        r = client.get("/v1/homework?date=2026-09-15", headers=AUTH)
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["homework"][0]["attachments"] == []
+
+
 def test_homework_sgo_error(monkeypatch):
     monkeypatch.setenv("API_TOKEN", "sekret")
     ns = AsyncMock()
@@ -156,6 +199,7 @@ def test_homework_sgo_error(monkeypatch):
 
     assert r.status_code == 502
     assert "boom" in r.json()["detail"]
+    ns.logout.assert_awaited_once()
 
 
 from app.homework import attachment_type
@@ -171,10 +215,19 @@ def test_homework_invalid_date(monkeypatch):
 def test_attachment_type():
     assert attachment_type("photo.png") == "image"
     assert attachment_type("photo.JPG") == "image"
+    assert attachment_type("photo.jpeg") == "image"
+    assert attachment_type("photo.gif") == "image"
+    assert attachment_type("photo.bmp") == "image"
+    assert attachment_type("photo.webp") == "image"
     assert attachment_type("doc.docx") == "word"
     assert attachment_type("doc.doc") == "word"
     assert attachment_type("file.pdf") == "pdf"
     assert attachment_type("table.xlsx") == "spreadsheet"
+    assert attachment_type("table.xls") == "spreadsheet"
     assert attachment_type("p.pptx") == "presentation"
+    assert attachment_type("p.ppt") == "presentation"
     assert attachment_type("a.rar") == "archive"
+    assert attachment_type("a.zip") == "archive"
+    assert attachment_type("a.7z") == "archive"
     assert attachment_type("notes.txt") == "other"
+    assert attachment_type("unknown.xyz") == "other"
