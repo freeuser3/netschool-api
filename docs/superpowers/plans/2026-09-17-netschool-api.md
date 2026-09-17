@@ -55,7 +55,7 @@ __pycache__/
 fastapi>=0.110,<1.0
 uvicorn[standard]>=0.29,<1.0
 pydantic>=2.4,<3.0
-httpx>=0.27,<1.0
+httpx==0.23.3
 pytest>=8.0,<9.0
 netschoolapi-plus @ git+https://github.com/freeuser3/netschool-api-plus.git
 ```
