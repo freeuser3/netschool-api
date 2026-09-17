@@ -161,6 +161,13 @@ def test_homework_sgo_error(monkeypatch):
 from app.homework import attachment_type
 
 
+def test_homework_invalid_date(monkeypatch):
+    monkeypatch.setenv("API_TOKEN", "sekret")
+    r = client.get("/v1/homework?date=15-09-2026", headers=AUTH)
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Invalid date format"
+
+
 def test_attachment_type():
     assert attachment_type("photo.png") == "image"
     assert attachment_type("photo.JPG") == "image"
